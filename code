@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scratch & Win 💖</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #ffd6e8, #e0c3ff);
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      overflow: hidden;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 22px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      z-index: 2;
+    }
+    h1 { color: #ff4d88; margin-bottom: 8px; }
+    p { color: #555; font-size: 0.95rem; }
+    .scratch-wrapper {
+      position: relative;
+      width: 260px;
+      height: 120px;
+      margin: 16px auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px dashed #ff9fc7;
+    }
+    .prize {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      font-weight: 600;
+      background: #fff0f7;
+      color: #6a1b9a;
+      animation: pulse 1.2s infinite alternate;
+    }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+    canvas { position: absolute; inset: 0; }
+    button {
+      margin-top: 12px;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: #ff4d88;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    .heart-options {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 10px;
+    }
+    .big-heart {
+      font-size: 48px;
+      cursor: pointer;
+      animation: pulse 1.2s infinite alternate;
+      transition: transform 0.2s ease;
+    }
+    .big-heart:hover { transform: scale(1.2); }
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #ffe4f1, #f3dcff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 5;
+      text-align: center;
+    }
+    .scene-content { width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; }
+    .scene-text { max-width: 340px; margin: 14px; color: #6a1b9a; font-weight: 600; }
+    .scene-gif { max-width: 100%; max-height: 100%; border-radius: 16px; }
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+  <h1>Scratch & Win 💌</h1>
+  <p>Scratch once — it’s fate ✨</p>
+
+  <div class="scratch-wrapper" id="wrapper">
+    <div class="prize" id="prize"></div>
+    <canvas id="scratch"></canvas>
+  </div>
+
+  <button id="redeem" style="display:none">Redeem 💖</button>
+  <button id="next" style="display:none">What next?! 💘</button>
+
+  <div class="hearts-stage" id="heartsStage" style="display:none">
+    <p style="margin:12px 0;color:#ff4d88;font-weight:600">Click any heart to get a free gift 💝</p>
+    <div class="heart-options">
+      <div class="big-heart" data-heart="1">💖</div>
+      <div class="big-heart" data-heart="2">💗</div>
+      <div class="big-heart" data-heart="3">💘</div>
+    </div>
+  </div>
+
+  <div class="scene" id="scene" style="display:none">
+    <div class="scene-content" id="sceneContent"></div>
+    <p class="scene-text" id="sceneText"></p>
+    <button id="sceneBack">Back 💗</button>
+  </div>
+</div>
+
+<script>
+const coupons = [
+  { text: "10-minute voice note rant 🎧", redeem: "Heyyy 💖 I just scratched a coupon — can I rant for 10 minutes? 🥹" },
+  { text: "Miss-you paragraph 💕", redeem: "I won a miss-you paragraph 🥹 I’m waiting 💕" },
+  { text: "Unlimited reassurance (1 day) 🤍", redeem: "Redeeming my reassurance pass 🤍 please don’t stop reassuring me today 🥺" },
+  { text: "You choose my profile pic 📸", redeem: "Profile pic privilege activated 📸😌 send me options" }
+];
+
+const canvas = document.getElementById('scratch');
+const ctx = canvas.getContext('2d');
+const prizeEl = document.getElementById('prize');
+const redeemBtn = document.getElementById('redeem');
+const nextBtn = document.getElementById('next');
+const heartsStage = document.getElementById('heartsStage');
+const wrapper = document.getElementById('wrapper');
+const scene = document.getElementById('scene');
+const sceneContent = document.getElementById('sceneContent');
+const sceneText = document.getElementById('sceneText');
+const sceneBack = document.getElementById('sceneBack');
+
+let scratching = false, revealed = false, currentCoupon;
+
+function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+function pick() { currentCoupon = coupons[Math.floor(Math.random()*coupons.length)]; prizeEl.textContent = currentCoupon.text; }
+function cover() { ctx.fillStyle='#c0c0c0'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#777'; ctx.font='16px Poppins'; ctx.textAlign='center'; ctx.fillText('Scratch here ✨',canvas.width/2,canvas.height/2+6); }
+function scratch(x,y){ if(revealed) return; ctx.globalCompositeOperation='destination-out'; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill(); check(); }
+function check(){ const img=ctx.getImageData(0,0,canvas.width,canvas.height); let cleared=0; for(let i=3;i<img.data.length;i+=4) if(img.data[i]===0) cleared++; if(cleared/(canvas.width*canvas.height)*100>40) reveal(); }
+
+function reveal(){
+  revealed=true;
+  redeemBtn.style.display='inline-block';
+  nextBtn.style.display='inline-block';
+}
+
+redeemBtn.onclick = ()=>{
+  const text = encodeURIComponent(currentCoupon.redeem);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+};
+
+nextBtn.onclick = () => {
+  redeemBtn.style.display = 'none';
+  nextBtn.style.display = 'none';
+  wrapper.style.display = 'none';
+  heartsStage.style.display = 'block';
+};
+
+document.querySelectorAll('.big-heart').forEach(h => {
+  h.onclick = () => {
+    const id = h.dataset.heart;
+    heartsStage.style.display = 'none';
+    scene.style.display = 'flex';
+    sceneContent.innerHTML = '';
+
+    if (id === '1') {
+      sceneContent.innerHTML = '<img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3J3cnZ3eDZhdXB2b3M2YnlkbWlhbTJvcjhjaHpyeHI5MGpld3BnZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/NxC8VtyxqhMtpLoEEN/giphy.gif" class="scene-gif" alt="Teddy Bear" />';
+      sceneText.textContent = 'A soft teddy sending warm hugs!';
+    } else if (id === '2') {
+      sceneContent.innerHTML = '<img src="https://media1.tenor.com/m/N6YkKkon-vsAAAAC/heart-heart-dance.gif" class="scene-gif" alt="Dancing Heart" />';
+      sceneText.textContent = 'This heart is dancing just for you!';
+    } else if (id === '3') {
+      sceneContent.innerHTML = '<img src="https://media1.tenor.com/m/yabEZhxPfGcAAAAC/timm.gif" class="scene-gif" alt="Flying Kisses" />';
+      sceneText.textContent = 'Sending you gentle flying kisses!';
+    }
+  };
+});
+
+sceneBack.onclick = () => {
+  scene.style.display = 'none';
+  heartsStage.style.display = 'block';
+};
+
+canvas.onmousedown = () => scratching = true;
+canvas.onmouseup = () => scratching = false;
+canvas.onmousemove = e => scratching && scratch(e.offsetX, e.offsetY);
+canvas.ontouchstart = () => scratching = true;
+canvas.ontouchend = () => scratching = false;
+canvas.ontouchmove = e => { e.preventDefault(); const r = canvas.getBoundingClientRect(); scratch(e.touches[0].clientX-r.left, e.touches[0].clientY-r.top); };
+
+resize(); pick(); cover();
+</script>
+</body>
+</html>
